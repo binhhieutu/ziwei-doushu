@@ -5,7 +5,8 @@
 
 import { astro } from 'iztro';
 import { Solar, LunarMonth } from 'lunar-javascript';
-import type { BirthInfo, LunarInfo, Star, Palace, DaXian, DaXianSiHua, ZiweiChart } from './types';
+import type { BirthInfo, LunarInfo, Star, Palace, DaXian, DaXianSiHua, ZiweiChart, VietnamCalendarOptions } from './types';
+import { validateVietnamProfile, vietnamLunarInfo, vietnamNominalAge, vietnamPlacement } from '../vietnam/placement';
 import { BRANCHES, STEMS } from './constants';
 import { schoolStarBrightness, type BrightnessSchool } from './school-data';
 import { SCHOOL_AX } from './school-tables.generated';
@@ -452,7 +453,7 @@ function applySchoolFuxun(palaces: Palace[]): void {
 
 export function generateChart(
   birthInfo: BirthInfo,
-  opts?: { leapMonth?: LunarMonthPolicy },
+  opts?: { leapMonth?: LunarMonthPolicy; vietnam?: VietnamCalendarOptions },
 ): ZiweiChart {
   const { year, month, day, hour, gender } = birthInfo;
   if (!Number.isInteger(hour) || hour < 0 || hour > 11) {
@@ -478,19 +479,23 @@ export function generateChart(
   // 默认 = DEFAULT_LEAP_MONTH（2026-09-05 起 split：主流排盘默认口径「月中分界」，150 组金标准盘对照验证；倪师派归下月可经流派抽屉切 next-month）
   // 非 split 时先算农历，闰月才切 byLunar；非闰月仍走 bySolar，与 split 行为完全一致
   const leapMode = opts?.leapMonth ?? DEFAULT_LEAP_MONTH;
-  const effectiveLunar = resolveEffectiveLunarDate(year, month, day, leapMode);
+  const vietnam = opts?.vietnam;
+  if (vietnam) validateVietnamProfile({ year, month, day }, hour, vietnam);
+  const effectiveLunar = vietnam ? undefined : resolveEffectiveLunarDate(year, month, day, leapMode);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let astrolabe: any;
 
-  if (leapMode !== 'split' && effectiveLunar.rawLunarMonth < 0) {
+  if (vietnam) {
+    astrolabe = vietnamPlacement(vietnam.lunarDate, hour, iztroGender);
+  } else if (leapMode !== 'split' && effectiveLunar!.rawLunarMonth < 0) {
       // 闰月生人 → 按用户选项切换月份归属
-      const lunarDateStr = `${effectiveLunar.lunarYear}-${effectiveLunar.lunarMonth}-${effectiveLunar.lunarDay}`;
+      const lunarDateStr = `${effectiveLunar!.lunarYear}-${effectiveLunar!.lunarMonth}-${effectiveLunar!.lunarDay}`;
       astrolabe = astro.byLunar(
         lunarDateStr,
         hour,
         iztroGender,
-        effectiveLunar.isLeapMonth,
+        effectiveLunar!.isLeapMonth,
         false,
         'zh-CN',
       );
@@ -587,12 +592,16 @@ export function generateChart(
   // 旧实现 `currentYear - year` 是年份差（少 1），导致大限边界年份错位 → 用户感觉
   // "大限没走对，似乎还在走上一个大限"。统一用 iztro 自身口径修复。
   let currentAge: number;
-  try {
-    const horo = (astrolabe as unknown as { horoscope: () => { age: { nominalAge: number } } }).horoscope();
-    currentAge = horo.age.nominalAge;
-  } catch {
-    // fallback：iztro 接口异常时回退到虚岁推导
-    currentAge = new Date().getFullYear() - year + 1;
+  if (vietnam) {
+    currentAge = vietnamNominalAge(vietnam.lunarDate.year);
+  } else {
+    try {
+      const horo = (astrolabe as unknown as { horoscope: () => { age: { nominalAge: number } } }).horoscope();
+      currentAge = horo.age.nominalAge;
+    } catch {
+      // fallback：iztro 接口异常时回退到虚岁推导
+      currentAge = new Date().getFullYear() - year + 1;
+    }
   }
 
   palaces.forEach(p => {
@@ -645,7 +654,8 @@ export function generateChart(
   );
 
   // ── 农历信息（含节气四柱）──
-  const lunarInfo = getLunarInfo(year, month, day, hour, leapMode);
+  const civilLunarInfo = getLunarInfo(year, month, day, hour, leapMode);
+  const lunarInfo = vietnam ? vietnamLunarInfo({ year, month, day }, vietnam, civilLunarInfo) : civilLunarInfo;
 
   // ★ 2026-08-14 金标准盘核对：截空/副截阴干对调 + 年支大耗 + 旬空成对副旬
   applySchoolJiekong(palaces, lunarInfo.yearStem);

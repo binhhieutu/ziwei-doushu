@@ -22,21 +22,29 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     setMounted(true);
-    const saved = localStorage.getItem('ziwei-theme') as Theme | null;
-    if (saved === 'light' || saved === 'dark') setTheme(saved);
+    try {
+      const saved = localStorage.getItem('ziwei-theme') as Theme | null;
+      if (saved === 'light' || saved === 'dark') setTheme(saved);
+    } catch {
+      /* A blocked preference store must not prevent charting. */
+    }
   }, []);
 
   useEffect(() => {
     if (!mounted) return;
     const root = document.documentElement;
     root.setAttribute('data-theme', theme);
-    localStorage.setItem('ziwei-theme', theme);
+    try {
+      localStorage.setItem('ziwei-theme', theme);
+    } catch {
+      /* Theme still applies for this session. */
+    }
   }, [theme, mounted]);
 
   const toggle = () => {
     const root = document.documentElement;
     root.classList.add('theme-transitioning');
-    setTheme(t => t === 'dark' ? 'light' : 'dark');
+    setTheme((t) => (t === 'dark' ? 'light' : 'dark'));
     setTimeout(() => root.classList.remove('theme-transitioning'), 420);
   };
 

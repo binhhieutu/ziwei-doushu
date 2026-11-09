@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import ts from 'typescript';
 
 // Feed real byte chunks through the page's original reader callback.
-const source = readFileSync(new URL('../../app/heming/page.tsx', import.meta.url), 'utf8');
+const source = readFileSync(new URL('../../components/legacy/HemingPage.tsx', import.meta.url), 'utf8');
 const start = source.indexOf('  // 表单是否填齐');
 const end = source.indexOf('  const cardStyle =', start);
 assert.ok(start >= 0 && end > start);

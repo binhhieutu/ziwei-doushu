@@ -5,7 +5,7 @@ import { formToBirthInfo } from '../../lib/ziwei/share';
 import type { BirthInfo } from '../../lib/ziwei/types';
 
 // Exercise the actual request callback across two renders, without a private backend.
-const source = readFileSync(new URL('../../app/heming/page.tsx', import.meta.url), 'utf8');
+const source = readFileSync(new URL('../../components/legacy/HemingPage.tsx', import.meta.url), 'utf8');
 const start = source.indexOf('  // 表单是否填齐');
 const end = source.indexOf('  const cardStyle =', start);
 assert.ok(start >= 0 && end > start);

@@ -8,6 +8,11 @@ export interface BirthInfo {
   province?: string;   // 出生省份
   city?: string;       // 出生城市
   longitude?: number;  // 出生地经度（用于真太阳时校正）
+  /** Present only for the opt-in Vietnamese calendar/civil-time adapter. */
+  calendarProfile?: 'vietnam-utc7';
+  unknownTime?: boolean;
+  timeMode?: 'clock' | 'mean-solar' | 'apparent-solar';
+  lateTyRule?: 'next-day' | 'current-day';
   /**
    * 原始输入（用户在表单里实际填的时间），已知出生时间时始终保留。
    * 例：用户输入 5/9 23:55 → year/month/day 会被改成 5/10（次日子时），
@@ -23,9 +28,26 @@ export interface BirthInfo {
   };
 }
 
+/** Actual Vietnam lunar date; never an alternative Gregorian birth date. */
+export interface VietnamCalendarOptions {
+  lunarDate: { year: number; month: number; day: number; isLeapMonth: boolean };
+  hour: number;
+  minute: number;
+  /** Solar-corrected civil date before applying the late-Tý day convention. */
+  civilDate: { year: number; month: number; day: number };
+  /** Physical birth instant in fixed UTC+7, before any solar/Tý correction. */
+  originalCivilTime: {
+    year: number;
+    month: number;
+    day: number;
+    clockHour: number;
+    clockMinute: number;
+  };
+}
+
 export interface LunarInfo {
   lunarYear: number;
-  lunarMonth: number;    // positive = normal, negative = leap month
+  lunarMonth: number;    // Legacy effective month; Vietnam profile retains raw1–12 with isLeapMonth.
   lunarDay: number;
   yearStem: number;      // 0-9 (甲乙丙丁戊己庚辛壬癸)
   yearBranch: number;    // 0-11 (子丑寅卯辰巳午未申酉戌亥)

@@ -1,5 +1,8 @@
 name: CI
 
+permissions:
+  contents: read
+
 on:
   push:
     branches: [main]
@@ -8,22 +11,34 @@ on:
 
 jobs:
   check:
-    name: 类型检查 + 排盘回归
+    name: Typecheck, regressions and Vietnamese app
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
       # 仓库已提交 package-lock.json：按锁定版本安装，并开 npm 缓存
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
-          node-version: '22'
+          node-version: '24'
           cache: npm
 
-      - name: 安装依赖
+      - name: Install locked dependencies
         run: npm ci --no-audit --no-fund
 
-      - name: 类型检查
+      - name: Typecheck
         run: npm run typecheck
 
-      - name: 排盘引擎回归
-        run: npm test
+      - name: Original engine regressions
+        run: npm run test:regression
+      - name: Unit, integration and coverage
+        run: npm run test:coverage
+      - name: Dependency audit
+        run: npm audit --audit-level=moderate
+      - name: Production build
+        run: npm run build
+      - name: Install test browser
+        run: npx playwright install --with-deps chromium
+      - name: Desktop and mobile flows
+        env:
+          PLAYWRIGHT_CHANNEL: chromium
+        run: npm run test:e2e
